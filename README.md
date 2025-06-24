@@ -44,8 +44,8 @@ A comprehensive Streamlit-based dashboard for managing Walmart logistics operati
 
 1. Clone this repository:
 ```
-git clone https://github.com/yourusername/walmart-logistics-dashboard.git
-cd walmart-logistics-dashboard
+git clone https://github.com/vedasri2511/walmart.git
+cd walmart
 ```
 
 2. Install dependencies:
@@ -65,7 +65,7 @@ The dashboard connects to a backend API that should be running on `http://localh
 ## File Structure
 
 ```
-walmart-logistics-dashboard/
+walmart/
 ├── app.py                 # Main application file
 ├── requirements.txt       # Python dependencies
 ├── README.md              # Documentation
