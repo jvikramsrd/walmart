@@ -1,143 +1,120 @@
 import streamlit as st
 import pandas as pd
+from utils.api import get_data, post_data, patch_data
 import matplotlib.pyplot as plt
-from utils.api import get_data, post_data, put_data
-from utils.helpers import display_kpi_metrics, plot_category_pie_chart, show_notification
+
+@st.cache_data(ttl=10)
+def fetch_inventory():
+    return get_data("inventory")
 
 def app():
+    """
+    Renders the Inventory Management page.
+    """
     st.header("Inventory Management")
-    st.markdown("---")
-    
-    # Get inventory data
-    inventory = get_data("inventory")
-    
-    # Display KPIs
-    if inventory:
-        low_stock_items = sum(1 for item in inventory if item.get('quantity', 0) < item.get('min_stock_level', 10))
+
+    inventory = fetch_inventory()
+
+    if inventory is None:
+        st.warning("Could not fetch inventory. The backend might be down or you might not have access.")
+        return
+
+    df = pd.DataFrame(inventory)
+
+    # --- KPIs ---
+    st.subheader("Key Metrics")
+    if not df.empty:
+        low_stock_items = df[df['quantity'] < df['min_stock_level']].shape[0]
         col1, col2 = st.columns(2)
-        col1.metric("Inventory Items", len(inventory))
+        col1.metric("Total Inventory Items", len(df))
         col2.metric("Low Stock Alerts", low_stock_items)
-    
-    # Inventory Visualization
-    if inventory:
-        tab1, tab2 = st.tabs(["Inventory Table", "Category Distribution"])
-        
-        # Tab 1: Inventory Table
-        with tab1:
-            # Filters
-            with st.expander("Filters", expanded=True):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    # SKU filter
-                    sku_filter = st.text_input("Filter by SKU", help="Type to filter inventory by SKU.")
-                
-                with col2:
-                    # Low stock filter
-                    show_low_stock = st.checkbox("Show only low stock items", help="Show only items below minimum stock level.")
-            
-            # Convert to DataFrame
-            df = pd.DataFrame(inventory)
-            
-            # Add search bar
-            search = st.text_input("Search by Product Name or Bin Location", help="Type to filter by product name or bin location.")
-            
-            # Apply filters
-            if not df.empty:
-                if sku_filter:
-                    df = df[df['sku'].str.contains(sku_filter, case=False)]
-                
-                if show_low_stock:
-                    df = df[df['quantity'] < df['min_stock_level']]
-                
-                if search:
-                    df = df[df['name'].str.contains(search, case=False) | df['bin_location'].str.contains(search, case=False)]
-                
-                if not df.empty:
-                    # Highlight low stock
-                    def highlight_low_stock(row):
-                        color = ''
-                        if row['quantity'] < row['min_stock_level']:
-                            color = 'background-color: #f8d7da;'
-                        return [color] * len(row)
-                    st.dataframe(df.style.apply(highlight_low_stock, axis=1), use_container_width=True)
-                    
-                    # Inventory actions
-                    st.subheader("Inventory Actions")
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        selected_sku = st.selectbox("Select SKU", df['sku'].tolist(), help="Choose a SKU to update stock.")
-                    
-                    with col2:
-                        quantity_change = st.number_input("Quantity Change", value=0, step=1, help="Enter positive or negative value to adjust stock.")
-                    
-                    if st.button("Update Stock"):
-                        if quantity_change != 0:
-                            # Get current quantity
-                            current_item = next((item for item in inventory if item['sku'] == selected_sku), None)
-                            
-                            if current_item:
-                                new_quantity = current_item['quantity'] + quantity_change
-                                
-                                if new_quantity >= 0:
-                                    success, _ = put_data(f"inventory/{selected_sku}", {"quantity": new_quantity})
-                                    
-                                    if success:
-                                        show_notification(f"Updated {selected_sku} stock to {new_quantity}", "success")
-                                        st.experimental_rerun()
-                                    else:
-                                        show_notification("Failed to update inventory", "error")
-                                else:
-                                    show_notification("Quantity cannot be negative", "warning")
-                else:
-                    st.info("No inventory items match the selected filters.")
-                    
-        # Tab 2: Category Distribution
-        with tab2:
-            if not df.empty and 'category' in df.columns:
-                st.markdown("### Inventory by Category")
-                fig = plot_category_pie_chart(df, "Inventory by Category")
-                st.pyplot(fig)
-            else:
-                st.info("No category data available for visualization.")
     else:
-        st.warning("Could not fetch inventory data. Please check API connection.")
-    
-    # Add New SKU Form
+        st.info("No inventory data to display KPIs.")
+
     st.markdown("---")
-    with st.expander("Add New SKU"):
-        with st.form("new_sku_form"):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                sku = st.text_input("SKU", placeholder="Enter SKU", help="Unique identifier for the product.")
-                name = st.text_input("Product Name", placeholder="Enter product name", help="Name of the product.")
-                category = st.text_input("Category", placeholder="Enter category", help="Product category.")
-                
-            with col2:
-                quantity = st.number_input("Quantity", min_value=0, value=0, help="Initial stock quantity.")
-                bin_location = st.text_input("Bin Location", placeholder="Enter bin location", help="Warehouse bin location.")
-                min_stock = st.number_input("Minimum Stock Level", min_value=1, value=10, help="Minimum stock before alert.")
-            
-            submit_button = st.form_submit_button("Add SKU")
-            
-            if submit_button:
-                if sku and name and category and bin_location:
-                    new_item = {
-                        "sku": sku,
-                        "name": name,
-                        "category": category,
-                        "quantity": quantity,
-                        "bin_location": bin_location,
-                        "min_stock_level": min_stock
-                    }
-                    
-                    success, _ = post_data("inventory", new_item)
+
+    # --- Data Display and Filtering ---
+    tab1, tab2 = st.tabs(["Inventory Table", "Category Distribution"])
+    
+    with tab1:
+        st.subheader("Inventory Details")
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("No inventory items found.")
+
+    with tab2:
+        st.subheader("Inventory by Category")
+        if not df.empty and 'category' in df.columns:
+            category_counts = df['category'].value_counts()
+            fig, ax = plt.subplots()
+            ax.pie(category_counts, labels=category_counts.index, autopct='%1.1f%%', startangle=90)
+            ax.axis('equal')
+            st.pyplot(fig)
+        else:
+            st.info("No category data available for visualization.")
+
+    st.markdown("---")
+
+    # --- Actions ---
+    st.subheader("Inventory Actions")
+    if not df.empty:
+        selected_sku = st.selectbox(
+            "Select SKU to update stock", 
+            df['sku'].tolist(), 
+            key="inventory_sku_select"
+        )
+        
+        quantity_change = st.number_input(
+            "Enter quantity to add (use negative to subtract)", 
+            step=1, 
+            key="inventory_quantity_change"
+        )
+
+        if st.button("Update Stock", key="update_stock_button"):
+            if quantity_change != 0:
+                current_item = df[df['sku'] == selected_sku].iloc[0]
+                new_quantity = int(current_item['quantity']) + quantity_change
+                if new_quantity >= 0:
+                    success, error = patch_data(f"inventory/{selected_sku}", {"quantity": new_quantity})
                     if success:
-                        show_notification(f"Added new SKU: {sku}", "success")
-                        st.experimental_rerun()
+                        st.success(f"Updated {selected_sku} stock to {new_quantity}.")
+                        st.cache_data.clear()
+                        st.rerun()
                     else:
-                        show_notification("Failed to add new SKU", "error")
+                        st.error(f"Failed to update inventory: {error}")
                 else:
-                    show_notification("Please fill all required fields", "warning")
+                    st.warning("Quantity cannot be negative.")
+    else:
+        st.info("No inventory items to perform actions on.")
+
+    st.markdown("---")
+
+    # --- Add New SKU ---
+    with st.expander("Add New SKU"):
+        with st.form("new_sku_form", clear_on_submit=True):
+            sku = st.text_input("SKU", key="sku_input")
+            name = st.text_input("Product Name", key="name_input")
+            category = st.text_input("Category", key="category_input")
+            quantity = st.number_input("Initial Quantity", min_value=0, step=1, key="quantity_input")
+            bin_location = st.text_input("Bin Location", key="bin_location_input")
+            min_stock_level = st.number_input("Minimum Stock Level", min_value=1, step=1, key="min_stock_input")
+
+            submit_button = st.form_submit_button("Add SKU")
+
+            if submit_button:
+                if all([sku, name, category, bin_location]):
+                    new_item = {
+                        "sku": sku, "name": name, "category": category,
+                        "quantity": quantity, "bin_location": bin_location,
+                        "min_stock_level": min_stock_level
+                    }
+                    data, error = post_data("inventory", new_item)
+                    if data:
+                        st.success(f"Added new SKU: {sku}")
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error(f"Failed to add new SKU: {error}")
+                else:
+                    st.warning("Please fill out all required fields.")

@@ -108,16 +108,11 @@ db.deliveries.insert_many(deliveries)
 # Sample Warehouse
 db.warehouse.delete_many({})
 warehouse = {
-    "bins": [
-        {"bin_id": "A1", "row": 0, "col": 0, "status": "occupied", "content": "SKU-2001"},
-        {"bin_id": "B2", "row": 1, "col": 1, "status": "occupied", "content": "SKU-2002"},
-        {"bin_id": "C3", "row": 2, "col": 2, "status": "empty", "content": None}
-    ],
-    "activity": [
-        {"row": 0, "col": 0, "activity_level": 8.5},
-        {"row": 1, "col": 1, "activity_level": 5.2},
-        {"row": 2, "col": 2, "activity_level": 2.1}
-    ]
+    "name": "Main Warehouse",
+    "address": "123 Main St, City",
+    "capacity": 1000,
+    "manager": "John Doe",
+    "contact": "555-1234"
 }
 db.warehouse.insert_one(warehouse)
 
