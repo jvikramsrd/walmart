@@ -10,7 +10,7 @@ from functools import wraps
 
 # API Configuration
 API_BASE = "http://localhost:3000/api"
-USE_MOCK_DATA = True  # Set to False when real API is available
+USE_MOCK_DATA = False  # Set to False when real API is available
 MOCK_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "mock_data")
 
 # Create mock data directory if it doesn't exist
@@ -85,14 +85,8 @@ def get_data(endpoint):
     # Real API request
     try:
         response = requests.get(f"{API_BASE}/{endpoint}", timeout=10)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.warning(f"API returned status code: {response.status_code}")
-            return []
-    except requests.exceptions.ConnectionError:
-        st.warning("Could not connect to API server. Using mock data instead.")
-        return generate_mock_data(endpoint)
+        response.raise_for_status()
+        return response.json()
     except Exception as e:
         st.error(f"Error fetching data: {str(e)}")
         return []
@@ -127,9 +121,6 @@ def post_data(endpoint, payload):
         else:
             st.warning(f"API returned status code: {response.status_code}")
             return False, None
-    except requests.exceptions.ConnectionError:
-        st.warning("Could not connect to API server. Using mock data instead.")
-        return True, payload  # Pretend it worked with mock data
     except Exception as e:
         st.error(f"Error submitting data: {str(e)}")
         return False, None
@@ -165,9 +156,6 @@ def put_data(endpoint, payload):
         else:
             st.warning(f"API returned status code: {response.status_code}")
             return False, None
-    except requests.exceptions.ConnectionError:
-        st.warning("Could not connect to API server. Using mock data instead.")
-        return True, payload  # Pretend it worked with mock data
     except Exception as e:
         st.error(f"Error updating data: {str(e)}")
         return False, None
@@ -196,9 +184,6 @@ def delete_data(endpoint):
     try:
         response = requests.delete(f"{API_BASE}/{endpoint}", timeout=10)
         return response.status_code in (200, 204)
-    except requests.exceptions.ConnectionError:
-        st.warning("Could not connect to API server. Using mock data instead.")
-        return True  # Pretend it worked with mock data
     except Exception as e:
         st.error(f"Error deleting data: {str(e)}")
         return False

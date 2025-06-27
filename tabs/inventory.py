@@ -5,7 +5,8 @@ from utils.api import get_data, post_data, put_data
 from utils.helpers import display_kpi_metrics, plot_category_pie_chart, show_notification
 
 def app():
-    st.header("📚 Inventory Management")
+    st.header("Inventory Management")
+    st.markdown("---")
     
     # Get inventory data
     inventory = get_data("inventory")
@@ -13,14 +14,9 @@ def app():
     # Display KPIs
     if inventory:
         low_stock_items = sum(1 for item in inventory if item.get('quantity', 0) < item.get('min_stock_level', 10))
-        
-        kpi_data = {
-            'inventory_items': len(inventory),
-            'low_stock': low_stock_items,
-            'low_stock_delta': f"+{low_stock_items} alerts" if low_stock_items > 0 else "No alerts"
-        }
-        
-        display_kpi_metrics(kpi_data)
+        col1, col2 = st.columns(2)
+        col1.metric("Inventory Items", len(inventory))
+        col2.metric("Low Stock Alerts", low_stock_items)
     
     # Inventory Visualization
     if inventory:
@@ -34,14 +30,17 @@ def app():
                 
                 with col1:
                     # SKU filter
-                    sku_filter = st.text_input("Filter by SKU")
+                    sku_filter = st.text_input("Filter by SKU", help="Type to filter inventory by SKU.")
                 
                 with col2:
                     # Low stock filter
-                    show_low_stock = st.checkbox("Show only low stock items")
+                    show_low_stock = st.checkbox("Show only low stock items", help="Show only items below minimum stock level.")
             
             # Convert to DataFrame
             df = pd.DataFrame(inventory)
+            
+            # Add search bar
+            search = st.text_input("Search by Product Name or Bin Location", help="Type to filter by product name or bin location.")
             
             # Apply filters
             if not df.empty:
@@ -51,19 +50,27 @@ def app():
                 if show_low_stock:
                     df = df[df['quantity'] < df['min_stock_level']]
                 
+                if search:
+                    df = df[df['name'].str.contains(search, case=False) | df['bin_location'].str.contains(search, case=False)]
+                
                 if not df.empty:
-                    # Display inventory table
-                    st.dataframe(df)
+                    # Highlight low stock
+                    def highlight_low_stock(row):
+                        color = ''
+                        if row['quantity'] < row['min_stock_level']:
+                            color = 'background-color: #f8d7da;'
+                        return [color] * len(row)
+                    st.dataframe(df.style.apply(highlight_low_stock, axis=1), use_container_width=True)
                     
                     # Inventory actions
                     st.subheader("Inventory Actions")
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        selected_sku = st.selectbox("Select SKU", df['sku'].tolist())
+                        selected_sku = st.selectbox("Select SKU", df['sku'].tolist(), help="Choose a SKU to update stock.")
                     
                     with col2:
-                        quantity_change = st.number_input("Quantity Change", value=0, step=1)
+                        quantity_change = st.number_input("Quantity Change", value=0, step=1, help="Enter positive or negative value to adjust stock.")
                     
                     if st.button("Update Stock"):
                         if quantity_change != 0:
@@ -89,6 +96,7 @@ def app():
         # Tab 2: Category Distribution
         with tab2:
             if not df.empty and 'category' in df.columns:
+                st.markdown("### Inventory by Category")
                 fig = plot_category_pie_chart(df, "Inventory by Category")
                 st.pyplot(fig)
             else:
@@ -97,19 +105,20 @@ def app():
         st.warning("Could not fetch inventory data. Please check API connection.")
     
     # Add New SKU Form
+    st.markdown("---")
     with st.expander("Add New SKU"):
         with st.form("new_sku_form"):
             col1, col2 = st.columns(2)
             
             with col1:
-                sku = st.text_input("SKU")
-                name = st.text_input("Product Name")
-                category = st.text_input("Category")
+                sku = st.text_input("SKU", placeholder="Enter SKU", help="Unique identifier for the product.")
+                name = st.text_input("Product Name", placeholder="Enter product name", help="Name of the product.")
+                category = st.text_input("Category", placeholder="Enter category", help="Product category.")
                 
             with col2:
-                quantity = st.number_input("Quantity", min_value=0, value=0)
-                bin_location = st.text_input("Bin Location")
-                min_stock = st.number_input("Minimum Stock Level", min_value=1, value=10)
+                quantity = st.number_input("Quantity", min_value=0, value=0, help="Initial stock quantity.")
+                bin_location = st.text_input("Bin Location", placeholder="Enter bin location", help="Warehouse bin location.")
+                min_stock = st.number_input("Minimum Stock Level", min_value=1, value=10, help="Minimum stock before alert.")
             
             submit_button = st.form_submit_button("Add SKU")
             

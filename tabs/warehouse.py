@@ -7,7 +7,8 @@ from utils.api import get_data, post_data
 from utils.helpers import display_kpi_metrics, show_notification
 
 def app():
-    st.header("🏢 Warehouse Management")
+    st.header("Warehouse Management")
+    st.markdown("---")
     
     # Get warehouse data
     warehouse_data = get_data("warehouse")
@@ -18,30 +19,23 @@ def app():
         total_bins = len(warehouse_data['bins'])
         occupied_bins = sum(1 for bin in warehouse_data['bins'] if bin.get('status') == 'occupied')
         efficiency = round((occupied_bins / total_bins) * 100 if total_bins > 0 else 0, 1)
-        
-        kpi_data = {
-            'inventory_items': total_bins,
-            'orders_today': occupied_bins,
-            'orders_delta': f"{efficiency}% utilized",
-            'low_stock': total_bins - occupied_bins,
-            'low_stock_delta': "available bins"
-        }
-        
-        display_kpi_metrics(kpi_data)
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Bins", total_bins)
+        col2.metric("Occupied Bins", occupied_bins)
+        col3.metric("Utilization", f"{efficiency}%")
     
     # Warehouse visualization and tools
     tab1, tab2, tab3 = st.tabs(["Warehouse Layout", "Pick Route Simulator", "Zone Heatmap"])
     
     # Tab 1: Warehouse Layout
     with tab1:
+        st.markdown("### Warehouse Bin Layout")
         if warehouse_data and 'bins' in warehouse_data:
             # Extract bin data
             bins = pd.DataFrame(warehouse_data['bins'])
             
             if not bins.empty:
                 # Create warehouse grid visualization
-                st.subheader("Warehouse Bin Layout")
-                
                 # Get grid dimensions
                 if 'row' in bins.columns and 'col' in bins.columns:
                     max_row = bins['row'].max()
@@ -110,7 +104,7 @@ def app():
     
     # Tab 2: Pick Route Simulator
     with tab2:
-        st.subheader("Order Pick Route Simulator")
+        st.markdown("### Order Pick Route Simulator")
         
         if inventory_data and warehouse_data and 'bins' in warehouse_data:
             # Create pick list form
@@ -216,7 +210,7 @@ def app():
     
     # Tab 3: Zone Heatmap
     with tab3:
-        st.subheader("Warehouse Zone Activity Heatmap")
+        st.markdown("### Warehouse Zone Activity Heatmap")
         
         if warehouse_data and 'activity' in warehouse_data:
             # Create a heatmap of activity

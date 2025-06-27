@@ -8,7 +8,8 @@ from utils.api import post_data
 from utils.helpers import show_notification
 
 def app():
-    st.header("🧠 Route Optimizer")
+    st.header("Route Optimizer")
+    st.markdown("---")
     
     # Input methods: Text input or file upload
     input_method = st.radio("Select input method", ["Enter Addresses Manually", "Upload File"])
@@ -57,7 +58,7 @@ def app():
     
     # Display the addresses
     if addresses:
-        st.subheader(f"Addresses to Optimize ({len(addresses)})")
+        st.markdown(f"### Addresses to Optimize ({len(addresses)})")
         for i, addr in enumerate(addresses[:10], 1):
             st.text(f"{i}. {addr}")
             
@@ -93,7 +94,7 @@ def app():
         col1, col2 = st.columns(2)
         
         with col1:
-            optimize_button = st.button("🧮 Optimize Route")
+            optimize_button = st.button("Optimize Route")
             
         with col2:
             map_type = st.selectbox("Map Type", ["Standard", "Satellite"])
@@ -110,7 +111,7 @@ def app():
                     "use_clustering": use_clustering if 'use_clustering' in locals() else True
                 }
                 
-                # Call API to optimize route
+                # Call backend optimizer
                 success, result = post_data("optimize_route", payload)
                 
                 if success and result:
@@ -122,7 +123,7 @@ def app():
                     route_coords = result.get("coordinates", [])
                     
                     # Display route metrics
-                    st.subheader("Route Metrics")
+                    st.markdown("### Route Metrics")
                     col1, col2, col3 = st.columns(3)
                     
                     with col1:
@@ -135,22 +136,22 @@ def app():
                         st.metric("CO2 Emissions", f"{co2_emissions:.1f} kg")
                     
                     # Display optimized route
-                    st.subheader("Optimized Route Order")
+                    st.markdown("### Optimized Route Order")
                     
                     if route_details:
-                        route_df = pd.DataFrame(route_details)
+                        route_df = pd.DataFrame(route_details, columns=["Stop", "Address"])
                         st.table(route_df)
                     
                     # Display map if coordinates are available
                     if route_coords and len(route_coords) > 1:
-                        st.subheader("Route Map")
+                        st.markdown("### Route Map")
                         
                         # Calculate center point for map
                         center_lat = sum(coord[0] for coord in route_coords) / len(route_coords)
                         center_lng = sum(coord[1] for coord in route_coords) / len(route_coords)
                         
                         # Create map
-                        m = folium.Map(location=[center_lat, center_lng], zoom_start=12)
+                        m = folium.Map(location=[center_lat, center_lng], zoom_start=12, tiles="OpenStreetMap" if map_type=="Standard" else "Stamen Terrain")
                         
                         # Add route line
                         folium.PolyLine(
@@ -185,7 +186,7 @@ def app():
                         
                     # Bonus: DBSCAN clustering visualization for multi-route optimization
                     if 'use_clustering' in locals() and use_clustering and "clusters" in result:
-                        st.subheader("Route Clustering Analysis")
+                        st.markdown("### Route Clustering Analysis")
                         
                         clusters = result.get("clusters", {})
                         
@@ -227,10 +228,7 @@ def app():
                             st.write(f"Number of clusters: {len(clusters)}")
                             st.write("Each cluster can be assigned to a different delivery vehicle.")
                 else:
-                    if not success:
-                        show_notification("Route optimization failed. Please check your addresses and try again.", "error")
-                    else:
-                        show_notification("Received empty response from optimization service.", "warning")
+                    show_notification("Route optimization failed. Please check your addresses and try again.", "error")
                         
     else:
         st.info("Enter addresses or upload a file to begin route optimization.")
