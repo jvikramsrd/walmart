@@ -1,5 +1,5 @@
 # This file makes the tabs directory a Python package
-from tabs import orders, inventory, delivery, warehouse, optimizer, login
+from tabs import orders, inventory, delivery, warehouse, optimizer
 
 TABS = {
     "Orders": {

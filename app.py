@@ -3,7 +3,6 @@ import os
 from PIL import Image
 from streamlit_option_menu import option_menu
 from tabs import TABS
-from tabs.login import app as login_app
 
 # --- Page Configuration ---
 assets_dir = os.path.join(os.path.dirname(__file__), "assets")
@@ -27,44 +26,32 @@ st.markdown("""
 
 def main():
     """Main function to run the Streamlit app."""
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
+    with st.sidebar:
+        st.image(logo_path, width=150)
+        st.markdown("## Navigation")
 
-    # If not logged in, show the login page
-    if not st.session_state.logged_in:
-        login_app()
-    # If logged in, show the main app
+        # Get tab names and icons from the TABS dictionary
+        tab_names = list(TABS.keys())
+        tab_icons = [TABS[t].get('icon', 'box') for t in tab_names]
+
+        selected_tab = option_menu(
+            menu_title=None,
+            options=tab_names,
+            icons=tab_icons,
+            menu_icon="cast",
+            default_index=0,
+        )
+        
+        st.markdown("---")
+        st.markdown("### User: `admin`")
+
+    # Display the selected tab's content
+    if selected_tab in TABS:
+        st.markdown(f"<h1 class='main-header'>{selected_tab}</h1>", unsafe_allow_html=True)
+        # Call the app function from the TABS dictionary
+        TABS[selected_tab]['func']()
     else:
-        with st.sidebar:
-            st.image(logo_path, width=150)
-            st.markdown("## Navigation")
-
-            # Get tab names and icons from the TABS dictionary
-            tab_names = list(TABS.keys())
-            tab_icons = [TABS[t].get('icon', 'box') for t in tab_names]
-
-            selected_tab = option_menu(
-                menu_title=None,
-                options=tab_names,
-                icons=tab_icons,
-                menu_icon="cast",
-                default_index=0,
-            )
-            
-            st.markdown("---")
-            st.markdown("### User: `admin`")
-            if st.button("Logout", key="logout_button"):
-                st.session_state.logged_in = False
-                st.session_state.pop("auth_token", None)
-                st.rerun()
-
-        # Display the selected tab's content
-        if selected_tab in TABS:
-            st.markdown(f"<h1 class='main-header'>{selected_tab}</h1>", unsafe_allow_html=True)
-            # Call the app function from the TABS dictionary
-            TABS[selected_tab]['func']()
-        else:
-            st.error("The selected tab could not be found.")
+        st.error("The selected tab could not be found.")
 
 if __name__ == "__main__":
     main()

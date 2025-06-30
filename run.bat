@@ -24,6 +24,14 @@ if %ERRORLEVEL% neq 0 (
     )
 )
 
+REM Check and populate database if empty
+echo Checking database...
+python check_and_populate.py
+
+REM Start the backend
+echo Starting backend server...
+start "Backend" /B python -m uvicorn backend:app --host 0.0.0.0 --port 8000
+
 REM Start the application
 echo Starting Walmart Logistics Dashboard...
 streamlit run app.py

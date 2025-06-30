@@ -21,6 +21,19 @@ if ! pip list | grep -q streamlit; then
     fi
 fi
 
+# Check and populate database if empty
+echo "Checking database..."
+python check_and_populate.py
+
+# Start the backend in the background
+echo "Starting backend server..."
+uvicorn backend:app --host 0.0.0.0 --port 8000 &
+BACKEND_PID=$!
+
 # Start the application
 echo "Starting Walmart Logistics Dashboard..."
 streamlit run app.py
+
+# When the script is interrupted, kill the backend process
+trap "kill $BACKEND_PID" SIGINT SIGTERM
+wait

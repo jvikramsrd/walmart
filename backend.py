@@ -161,13 +161,13 @@ async def get_orders():
     return [order for order in db.orders.find()]
 
 @app.post("/api/orders", response_model=Order, status_code=201, tags=["Orders"])
-async def add_order(order: Order, user: User = Depends(get_current_active_user)):
+async def add_order(order: Order):
     order_dict = order.dict()
     db.orders.insert_one(order_dict)
     return order
 
 @app.patch("/api/orders/{order_id}", status_code=204, tags=["Orders"])
-async def patch_order(order_id: str, patch: dict, user: User = Depends(get_current_active_user)):
+async def patch_order(order_id: str, patch: dict):
     if "status" in patch:
         patch["status"] = patch["status"].lower()
     result = db.orders.update_one({"order_id": order_id}, {"$set": patch})
@@ -176,7 +176,7 @@ async def patch_order(order_id: str, patch: dict, user: User = Depends(get_curre
     return
 
 @app.delete("/api/orders/{order_id}", status_code=204, tags=["Orders"])
-async def delete_order(order_id: str, user: User = Depends(get_current_active_user)):
+async def delete_order(order_id: str):
     result = db.orders.delete_one({"order_id": order_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -188,20 +188,20 @@ async def get_inventory():
     return [item for item in db.inventory.find()]
 
 @app.post("/api/inventory", response_model=InventoryItem, status_code=201, tags=["Inventory"])
-async def add_inventory(item: InventoryItem, user: User = Depends(get_current_active_user)):
+async def add_inventory(item: InventoryItem):
     item_dict = item.dict()
     db.inventory.insert_one(item_dict)
     return item
 
 @app.patch("/api/inventory/{sku}", status_code=204, tags=["Inventory"])
-async def patch_inventory(sku: str, patch: dict, user: User = Depends(get_current_active_user)):
+async def patch_inventory(sku: str, patch: dict):
     result = db.inventory.update_one({"sku": sku}, {"$set": patch})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="SKU not found")
     return
 
 @app.delete("/api/inventory/{sku}", status_code=204, tags=["Inventory"])
-async def delete_inventory(sku: str, user: User = Depends(get_current_active_user)):
+async def delete_inventory(sku: str):
     result = db.inventory.delete_one({"sku": sku})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="SKU not found")
@@ -213,13 +213,13 @@ async def get_deliveries():
     return [delivery for delivery in db.deliveries.find()]
 
 @app.post("/api/deliveries", response_model=Delivery, status_code=201, tags=["Deliveries"])
-async def add_delivery(delivery: Delivery, user: User = Depends(get_current_active_user)):
+async def add_delivery(delivery: Delivery):
     delivery_dict = delivery.dict()
     db.deliveries.insert_one(delivery_dict)
     return delivery
 
 @app.patch("/api/deliveries/{delivery_id}", status_code=204, tags=["Deliveries"])
-async def patch_delivery(delivery_id: str, patch: dict, user: User = Depends(get_current_active_user)):
+async def patch_delivery(delivery_id: str, patch: dict):
     if "status" in patch:
         patch["status"] = patch["status"].lower()
     result = db.deliveries.update_one({"delivery_id": delivery_id}, {"$set": patch})
@@ -228,7 +228,7 @@ async def patch_delivery(delivery_id: str, patch: dict, user: User = Depends(get
     return
 
 @app.delete("/api/deliveries/{delivery_id}", status_code=204, tags=["Deliveries"])
-async def delete_delivery(delivery_id: str, user: User = Depends(get_current_active_user)):
+async def delete_delivery(delivery_id: str):
     result = db.deliveries.delete_one({"delivery_id": delivery_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Delivery not found")
@@ -240,14 +240,14 @@ async def get_warehouses():
     return [serialize_doc(w) for w in db.warehouse.find()]
 
 @app.post("/api/warehouse", response_model=Warehouse, status_code=201, tags=["Warehouse"])
-async def add_warehouse(warehouse: Warehouse, user: User = Depends(get_current_active_user)):
+async def add_warehouse(warehouse: Warehouse):
     warehouse_dict = warehouse.dict()
     db.warehouse.insert_one(warehouse_dict)
     return warehouse
 
 # --- Optimizer Endpoint ---
 @app.post("/api/optimize_route", tags=["Optimizer"])
-async def optimize_route(payload: dict, user: User = Depends(get_current_active_user)):
+async def optimize_route(payload: dict):
     addresses = payload.get("addresses", [])
     # Dummy implementation
     route = [(i + 1, addr) for i, addr in enumerate(addresses)]
